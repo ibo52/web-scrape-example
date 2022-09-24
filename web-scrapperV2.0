@@ -1,0 +1,85 @@
+import requests as rq
+from requests.exceptions import Timeout
+from bs4 import BeautifulSoup as bs
+
+from threading import Thread
+def decorate(text:str,num:int):
+    print(text*num)
+    
+class web_scrapper:
+    def __init__(self):
+        self.headers=[{
+    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:104.0) Gecko/20100101 Firefox/104.0',},
+         {
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
+        }]
+        self.timeout=(4.6, 6.5)
+        self.sites={
+            "n11":{"addr":"https://www.n11.com/arama?q=",
+                    "raw":("ul",{'class':'list-ul'}),
+                    "price-tag":("ins",None),
+                    "name-tag":("h3",{"class":"productName"} ),
+                    "link-tag":("a",{"class":"plink"})
+                    }
+            
+            ,        
+            "trendyol":{"addr":"https://www.trendyol.com/sr?q=",
+                        "raw":('div',{'class':'prdct-cntnr-wrppr'}),
+                        "name-tag":(["div"],{"class":["prdct-desc-cntnr-ttl-w"]}),
+                        "price-tag":("div",{"class":"product-price"}),
+                        "link-tag":("a",True)
+                        }
+            
+        }
+
+    def search(self,site:str,i="terlik"):
+        
+        try:
+            page=rq.get(self.sites[site]["addr"] + i,headers=self.headers[0], timeout=self.timeout)
+        except Timeout as e:
+            print(e,"\nServer connect/reply waited too long.")
+            exit(e)
+
+        if page.status_code==200:#means OK
+
+            soup=bs(page.content,"html.parser")
+            a,b=self.sites[site]["raw"]
+
+            raw=soup.find(a,b)
+
+            a,b=self.sites[site]["name-tag"]
+            names=raw.find_all(a,b)
+            names=[pt.get_text() for pt in names]
+            
+            a,b=self.sites[site]["link-tag"]
+
+            #--trendyol additional setting
+            if site=="trendyol":
+                links=raw.find_all(a,href=b)
+            else:
+                links=raw.find_all(a,b)
+            #--trendyol additional setting
+                
+            links=[pt["href"] for pt in links]
+
+            a,b=self.sites[site]["price-tag"]
+            prices=raw.find_all(a,b)
+            prices=[pt.get_text() for pt in prices]
+
+            print("Results for:",i)
+            decorate("<>",40)
+            for e,p,l in zip(names,prices,links):
+                print("Name:",e)
+                print("      Price:",p)
+                print("            Link:",l)
+                decorate("--",40)
+
+if __name__=="__main__":
+    s=web_scrapper()
+    
+    i=input("Search for any products to compare: ")
+    s.search("trendyol",i)
+    decorate("==",40)
+    print("")
+    decorate("==",40)
+    s.search("n11",i)
